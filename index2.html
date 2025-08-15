@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Leaderboard</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #0f0f0f;
+    color: #fff;
+    text-align: center;
+    padding: 20px;
+  }
+  h1 {
+    margin-bottom: 20px;
+  }
+  #podium {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 20px;
+    margin-bottom: 30px;
+  }
+  .podium-place {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    width: 100px;
+    background: linear-gradient(180deg, #ffcc00, #996600);
+    border-radius: 10px 10px 0 0;
+    padding-bottom: 10px;
+    transition: height 0.5s ease;
+  }
+  .podium-place strong {
+    display: block;
+    margin-top: 5px;
+  }
+  table {
+    margin: 0 auto;
+    border-collapse: collapse;
+    background: #1a1a1a;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  th, td {
+    padding: 10px 15px;
+    border-bottom: 1px solid #333;
+  }
+  th {
+    background: #222;
+  }
+  tr:hover {
+    background: #333;
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const supabaseUrl = "https://jjbgswkiwdgephfbzpif.supabase.co";
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpqYmdzd2tpd2RnZXBoZmJ6cGlmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMzg0OTcsImV4cCI6MjA3MDgxNDQ5N30.kKbiQc5ykNRnx5PW--iQ-Z3FF7rHi1z8SlQ8wKv6ecA";
+const db = supabase.createClient(supabaseUrl, supabaseKey);
+
+async function loadTeams() {
+  const { data, error } = await db.from('teams').select('*');
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  // Calculate total scores from scores JSON
+  data.forEach(team => {
+    team.score = Object.values(team.scores || {}).reduce(
+      (sum, val) => sum + Number(val || 0), 
+      0
+    );
+  });
+
+  // Sort by score descending
+  data.sort((a, b) => b.score - a.score);
+
+  renderPodium(data);
+  renderTable(data);
+}
+
+function renderPodium(data) {
+  const podium = document.getElementById('podium');
+  podium.innerHTML = '';
+
+  const top3 = [
+    data[1] || { name: '', score: 0 }, // Second place
+    data[0] || { name: '', score: 0 }, // First place
+    data[2] || { name: '', score: 0 }  // Third place
+  ];
+
+  const heights = [150, 200, 120];
+
+  top3.forEach((team, idx) => {
+    const div = document.createElement('div');
+    div.className = 'podium-place';
+    div.style.height = heights[idx] + 'px';
+    div.innerHTML = `<div>${team.score}</div><strong>${team.name}</strong>`;
+    podium.appendChild(div);
+  });
+}
+
+function renderTable(data) {
+  const tableContainer = document.getElementById('table-container');
+  let tableHTML = `<table>
+    <tr><th>Rank</th><th>Name</th><th>Score</th></tr>`;
+  data.forEach((team, i) => {
+    tableHTML += `<tr><td>${i + 1}</td><td>${team.name}</td><td>${team.score}</td></tr>`;
+  });
+  tableHTML += `</table>`;
+  tableContainer.innerHTML = tableHTML;
+}
+
+loadTeams();
+</script>
+</head>
+<body>
+<h1>Leaderboard</h1>
+<h2>🟢const supabaseUrl = "https://jjbgswkiwdgephfbzpif.supabase.co";
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpqYmdzd2tpd2RnZXBoZmJ6cGlmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyMzg0OTcsImV4cCI6MjA3MDgxNDQ5N30.kKbiQc5ykNRnx5PW--iQ-Z3FF7rHi1z8SlQ8wKv6ecA";
+</h2>
+<div id="podium"></div>
+<div id="table-container"></div>
+</body>
+</html>
