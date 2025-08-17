@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>⚠️ Clear Teams Table — Supabase</title>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial, sans-serif; background:#0f0f0f; color:#fff; text-align:center; padding:40px; }
+    h1 { color:#ffcc00; }
+    p { max-width:500px; margin:10px auto; }
+    input { display:block; margin:12px auto; padding:10px; width:340px;
+            border-radius:6px; border:1px solid #444; background:#222; color:#fff; }
+    button { padding:12px 24px; font-weight:bold; border:none; border-radius:8px;
+             background:linear-gradient(90deg,#ff4d4d,#ff9a9a); cursor:pointer; color:#111; }
+    button:hover{ opacity:.9; }
+    #status { margin-top:20px; font-weight:bold; }
+    .danger { color:#ff6b6b; }
+  </style>
+</head>
+<body>
+  <h1>⚠️ Clear Supabase Teams Table</h1>
+  <p class="danger">This will permanently delete <b>ALL rows</b> in the <code>teams</code> table!</p>
+
+  <input type="text" id="url" placeholder="https://YOUR-PROJECT.supabase.co">
+  <input type="password" id="key" placeholder="Anon public key">
+  <input type="text" id="confirm" placeholder='Type DELETE to confirm'>
+
+  <button id="clearBtn">🚨 Clear Teams</button>
+  <div id="status"></div>
+
+  <script>
+    document.getElementById('clearBtn').onclick = async () => {
+      const url = document.getElementById('url').value.trim();
+      const key = document.getElementById('key').value.trim();
+      const confirmTxt = document.getElementById('confirm').value.trim();
+      if(!url || !key){ alert("Enter Supabase URL and anon key"); return; }
+      if(confirmTxt !== "DELETE"){ alert("You must type DELETE to confirm"); return; }
+
+      const supabase = window.supabase.createClient(url, key);
+      document.getElementById('status').textContent = "⏳ Deleting...";
+
+      try {
+        const { error } = await supabase
+          .from("teams")
+          .delete()
+          .neq("id", "00000000-0000-0000-0000-000000000000"); // always true
+
+        if(error){ throw error; }
+        document.getElementById('status').textContent = "✅ All rows deleted!";
+      } catch(e){
+        document.getElementById('status').textContent = "❌ Error: " + e.message;
+      }
+    };
+  </script>
+</body>
+</html>

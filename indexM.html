@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>⚡ Shark Tank Leaderboard — Supabase</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --grad-a:#ff00c8; --grad-b:#00ffe7; --glass:rgba(255,255,255,.06); --stroke:rgba(255,255,255,.12);
+  }
+  *{box-sizing:border-box}
+  body{
+    font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto; color:#fff; margin:0; padding:20px; 
+    background:linear-gradient(270deg,#0a0a0a,#111,#1a1a1a); background-size:600% 600%; animation:bgShift 20s ease infinite;
+  }
+  @keyframes bgShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+  h1{ text-align:center; font-size:2.4rem; font-weight:800; margin:0 0 20px; 
+      background:linear-gradient(90deg,var(--grad-a),var(--grad-b)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  h3{ margin:24px 0 12px; font-weight:600; color:#d6d6d6 }
+
+  .card, table, .rank-list, .podium{
+    background:var(--glass); border:1px solid var(--stroke); border-radius:14px; backdrop-filter:blur(12px);
+    box-shadow:0 6px 50px rgba(0,0,0,.6); padding:12px; transition:transform .25s ease, box-shadow .25s ease;
+  }
+  .card:hover, table:hover, .rank-list:hover, .podium:hover{ transform:translateY(-2px); box-shadow:0 10px 60px rgba(0,0,0,.8) }
+
+  /* Controls */
+  .row{ display:grid; grid-template-columns:1fr 1fr; gap:16px }
+  @media (max-width:800px){ .row{ grid-template-columns:1fr } }
+  .settings{ display:flex; gap:8px; flex-wrap:wrap; align-items:center }
+  input[type=text], input[type=number], input[type=password]{
+    background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.2); border-radius:8px; padding:9px 10px; color:#fff; width:100%;
+  }
+  input:focus{ outline:none; border-color:var(--grad-b); box-shadow:0 0 8px var(--grad-b) }
+  label{ font-size:.8rem; opacity:.85 }
+
+  button{
+    background:linear-gradient(90deg,var(--grad-a),var(--grad-b)); color:#0b0b0b; font-weight:800; letter-spacing:.2px;
+    padding:10px 16px; border-radius:10px; border:none; cursor:pointer; 
+    transition:transform .15s ease, box-shadow .15s ease, opacity .2s ease; box-shadow:0 0 0 rgba(0,0,0,0);
+  }
+  button:hover{ transform:translateY(-1px) scale(1.02); box-shadow:0 0 16px rgba(0,255,231,.3) }
+  button.ghost{ background:transparent; color:#fff; border:1px solid var(--stroke) }
+  button.warn{ background:linear-gradient(90deg,#ff7a7a,#ffb199); color:#1a1a1a }
+
+  /* Tables */
+  table{ width:100%; border-collapse:collapse }
+  th,td{ padding:10px; border-bottom:1px solid rgba(255,255,255,.1) }
+  th{ font-weight:600; color:#bbb; text-align:left }
+  td input{ width:100% }
+
+  /* Podium */
+  .podium{ display:flex; justify-content:center; align-items:flex-end; gap:18px; margin:28px auto; max-width:760px }
+  .place{ text-align:center; border-radius:14px; flex:1; display:flex; flex-direction:column; justify-content:flex-end; align-items:center;
+          font-weight:700; overflow:hidden; box-shadow:0 0 20px rgba(0,0,0,.5); padding:8px; transition:height .6s cubic-bezier(.2,.8,.2,1) }
+  .first{ background:linear-gradient(180deg,#ffd700,rgba(255,215,0,.08)) }
+  .second{ background:linear-gradient(180deg,silver,rgba(192,192,192,.08)) }
+  .third{ background:linear-gradient(180deg,#cd7f32,rgba(205,127,50,.08)) }
+  .place small{ opacity:.9 }
+  .place .actions{ display:flex; gap:6px; margin:8px 0 4px }
+
+  /* Rank list */
+  .rank-list{ max-width:520px; margin:10px auto; padding:8px 0 }
+  .rank-item{ display:grid; grid-template-columns:auto 1fr auto auto; gap:10px; align-items:center; padding:10px 14px; 
+              border-bottom:1px solid rgba(255,255,255,.1); }
+  .rank-item:hover{ background:rgba(255,255,255,.04) }
+  .badge{ opacity:.8; font-size:.8rem }
+
+  /* Form */
+  #addRecordForm{ margin-top:8px; padding:10px; background:rgba(255,255,255,.05); border-radius:12px }
+  .form-actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:8px }
+  .pill{ display:inline-flex; align-items:center; gap:6px; font-size:.8rem; padding:6px 10px; border-radius:999px; border:1px solid var(--stroke); opacity:.85 }
+
+  .muted{ opacity:.75 }
+</style>
+</head>
+<body>
+  <h1>⚡ Shark Tank Leaderboard</h1>
+
+  <!-- Supabase Settings -->
+  <div class="card">
+    <div class="settings">
+      <div style="flex:2; min-width:240px">
+        <label>Supabase Project URL</label>
+        <input type="text" id="sbUrl" placeholder="https://YOUR-PROJECT.supabase.co" />
+      </div>
+      <div style="flex:3; min-width:260px">
+        <label>Supabase Anon Public Key</label>
+        <input type="password" id="sbKey" placeholder="ey... (anon key)" />
+      </div>
+      <div style="display:flex; gap:8px; align-items:flex-end">
+        <button id="connectBtn">Connect</button>
+        <button class="ghost" id="disconnectBtn">Disconnect</button>
+      </div>
+      <div class="pill" id="statusPill">🔌 Not connected</div>
+    </div>
+    <div class="muted" style="margin-top:8px; font-size:.9rem">Tip: your URL & key are saved in your browser only (localStorage).</div>
+  </div>
+<div style="text-align:right; margin:10px 0">
+  <button id="toggleQualitiesBtn" class="ghost">Hide Qualities</button>
+</div>
+  <!-- Qualities -->
+  <div id="qualitiesSection">
+  <h3>Qualities & Out Of</h3>
+  <table id="qualitiesTable">
+    <tr><th>Quality</th><th>Out of</th><th></th></tr>
+  </table>
+  <div class="form-actions">
+    <button id="addQualityBtn">+ Add Quality</button>
+    <button class="ghost" id="saveQualitiesBtn">Save Qualities</button>
+    <span class="muted" id="qualMsg"></span>
+  </div>
+  </div>
+
+  <!-- Add/Edit Team -->
+  <h3>Add / Edit Team Record</h3>
+  <div id="addRecordForm"></div>
+  <div class="form-actions">
+    <button id="saveTeamBtn">Add Team</button>
+    <button class="ghost" id="cancelEditBtn" style="display:none">Cancel Edit</button>
+  </div>
+
+  <!-- Podium + Ranks -->
+  <div class="podium" id="podium"></div>
+  <div class="rank-list" id="rankList"></div>
+
+  <!-- Supabase JS v2 -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script>
+    // ===== State =====
+    let supabaseClient = null;
+    let teams = []; // {id, name, score, scores: number[]}
+    let editId = null; // team id while editing
+
+    // ===== Helpers =====
+    const $ = (sel) => document.querySelector(sel);
+
+    function getQualities(){
+      const rows = [...$('#qualitiesTable').querySelectorAll('tr')].slice(1);
+      return rows.map(r=>{
+        const [q,out] = r.querySelectorAll('input');
+        return { name:q.value.trim()||'Quality', outOf: Math.max(1, Number(out.value)||10) };
+      });
+    }
+    function setQualities(list){
+      const tb = $('#qualitiesTable');
+      tb.innerHTML = '<tr><th>Quality</th><th>Out of</th><th></th></tr>';
+      (list && list.length? list : [
+        {name:'Teamwork', outOf:10}, {name:'Speed', outOf:10}, {name:'Accuracy', outOf:10}
+      ]).forEach(q=>addQualityRow(q.name,q.outOf));
+    }
+    function addQualityRow(name='New Quality', outOf=10){
+      const row = $('#qualitiesTable').insertRow();
+      const c1=row.insertCell(0), c2=row.insertCell(1), c3=row.insertCell(2);
+      c1.innerHTML = `<input type="text" value="${name.replace(/"/g,'&quot;')}">`;
+      c2.innerHTML = `<input type="number" min="1" value="${outOf}">`;
+      c3.innerHTML = `<button class="ghost" onclick="this.closest('tr').remove(); renderAddRecordForm()">Remove</button>`;
+    }
+
+    function saveQualitiesToLocal(){
+      const qs = getQualities();
+      localStorage.setItem('qualities', JSON.stringify(qs));
+      $('#qualMsg').textContent = '✓ Saved';
+      setTimeout(()=>$('#qualMsg').textContent='',1500);
+      renderAddRecordForm();
+    }
+
+    // ===== Supabase connect/disconnect =====
+    function setStatus(text, ok=false){
+      const pill = $('#statusPill'); pill.textContent = text; pill.style.borderColor = ok? 'rgba(0,255,231,.5)':'var(--stroke)';
+    }
+
+    async function connectSupabase(){
+      const url = $('#sbUrl').value.trim();
+      const key = $('#sbKey').value.trim();
+      if(!url || !key){ alert('Enter Supabase URL and anon key'); return; }
+      supabaseClient = supabase.createClient(url, key);
+      localStorage.setItem('sbUrl', url); localStorage.setItem('sbKey', key);
+      setStatus('🟢 Connected', true);
+      await loadTeams();
+      subscribeRealtime();
+    }
+    function disconnectSupabase(){
+      supabaseClient = null; setStatus('🔌 Not connected'); teams = []; updateLeaderboard();
+    }
+
+    // ===== CRUD =====
+    async function loadTeams(){
+      if(!supabaseClient) return;
+      const { data, error } = await supabaseClient
+        .from('teams')
+        .select('id,name,score,scores')
+        .order('score', { ascending:false });
+      if(error){ console.error(error); alert('Failed to load teams: '+error.message); return; }
+      teams = data || [];
+      updateLeaderboard();
+    }
+
+    function computePercent(scores){
+      const qs = getQualities();
+      let total=0, maxTotal=0;
+      for(let i=0;i<qs.length;i++){
+        const outOf = qs[i].outOf; const s = Number(scores[i]||0);
+        if(s>outOf) return {error:`Score for ${qs[i].name} cannot exceed ${outOf}`};
+        total+=s; maxTotal+=outOf;
+      }
+      return {value: maxTotal? (total/maxTotal)*100 : 0};
+    }
+
+    function renderAddRecordForm(team=null){
+      const qs = getQualities();
+      let html = `Team Name: <input type="text" id="teamName" value="${team? team.name.replace(/"/g,'&quot;'):''}"> <br><br>`;
+      qs.forEach((q,idx)=>{
+        const val = team && Array.isArray(team.scores)? (team.scores[idx] ?? '') : '';
+        html += `${q.name}: <input type="number" id="score_${idx}" min="0" max="${q.outOf}" value="${val}"> <span class="badge">/ ${q.outOf}</span><br>`;
+      });
+      $('#addRecordForm').innerHTML = html;
+      $('#saveTeamBtn').textContent = editId? 'Update Team' : 'Add Team';
+      $('#cancelEditBtn').style.display = editId? 'inline-block':'none';
+    }
+
+    async function saveTeam(){
+      const name = $('#teamName')?.value.trim();
+      if(!name) return alert('Enter team name');
+      const qs = getQualities();
+      const scores = qs.map((_,i)=> Number($(`#score_${i}`)?.value || 0));
+      const res = computePercent(scores);
+      if(res.error) return alert(res.error);
+      const payload = { name, score: Number(res.value.toFixed(4)), scores };
+
+      if(!supabaseClient){
+        // Fallback local-only mode
+        if(editId){
+          const i = teams.findIndex(t=>t.id===editId); if(i>-1){ teams[i] = { ...teams[i], ...payload }; }
+          editId=null; renderAddRecordForm(); updateLeaderboard(); return;
+        } else {
+          teams.push({ id: crypto.randomUUID(), ...payload }); updateLeaderboard(); return;
+        }
+      }
+
+      if(editId){
+        const { error } = await supabaseClient.from('teams').update(payload).eq('id', editId);
+        if(error){ alert('Update failed: '+error.message); return; }
+        editId=null;
+      } else {
+        const { error } = await supabaseClient.from('teams').insert([payload]);
+        if(error){ alert('Insert failed: '+error.message); return; }
+      }
+      await loadTeams();
+      renderAddRecordForm();
+    }
+
+    function editTeam(id){
+      const t = teams.find(x=>x.id===id); if(!t) return;
+      editId = id; renderAddRecordForm(t);
+      window.scrollTo({ top: document.body.scrollHeight*0.25, behavior:'smooth' });
+    }
+
+    async function deleteTeam(id){
+      if(!confirm('Delete this team?')) return;
+      if(!supabaseClient){ teams = teams.filter(t=>t.id!==id); updateLeaderboard(); return; }
+      const { error } = await supabaseClient.from('teams').delete().eq('id', id);
+      if(error){ alert('Delete failed: '+error.message); return; }
+      await loadTeams();
+    }
+
+    function cancelEdit(){ editId=null; renderAddRecordForm(); }
+
+    function updateLeaderboard(){
+      teams.sort((a,b)=> b.score - a.score);
+      // Podium heights
+      const h=[ teams[0]?220:0, teams[1]?170:0, teams[2]?140:0 ];
+      const p = $('#podium');
+      p.innerHTML = `
+        <div class="place second" style="height:${h[1]}px">
+          <small>2nd</small><div>${teams[1]?.name??''}</div><small>${teams[1]? (teams[1].score.toFixed(1)+'%') : ''}</small>
+          ${teams[1]? `<div class="actions"><button onclick="editTeam('${teams[1].id}')">Edit</button><button class="warn" onclick="deleteTeam('${teams[1].id}')">Delete</button></div>`:''}
+        </div>
+        <div class="place first" style="height:${h[0]}px">
+          <small>1st</small><div>${teams[0]?.name??''}</div><small>${teams[0]? (teams[0].score.toFixed(1)+'%') : ''}</small>
+          ${teams[0]? `<div class="actions"><button onclick="editTeam('${teams[0].id}')">Edit</button><button class="warn" onclick="deleteTeam('${teams[0].id}')">Delete</button></div>`:''}
+        </div>
+        <div class="place third" style="height:${h[2]}px">
+          <small>3rd</small><div>${teams[2]?.name??''}</div><small>${teams[2]? (teams[2].score.toFixed(1)+'%') : ''}</small>
+          ${teams[2]? `<div class="actions"><button onclick="editTeam('${teams[2].id}')">Edit</button><button class="warn" onclick="deleteTeam('${teams[2].id}')">Delete</button></div>`:''}
+        </div>`;
+
+      // Ranks 4+
+      const rl = $('#rankList');
+      rl.innerHTML = '';
+      teams.slice(3).forEach((t,i)=>{
+        const row = document.createElement('div'); row.className='rank-item';
+        row.innerHTML = `<span class="badge">${i+4}.</span><strong>${t.name}</strong><span>${t.score.toFixed(1)}%</span>
+                         <span style="display:flex; gap:6px"><button onclick="editTeam('${t.id}')">Edit</button><button class="warn" onclick="deleteTeam('${t.id}')">Delete</button></span>`;
+        rl.appendChild(row);
+      });
+    }
+
+    // Realtime updates (optional; requires Realtime enabled on table)
+    function subscribeRealtime(){
+      if(!supabaseClient) return;
+      supabaseClient.channel('public:teams-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, (payload)=>{
+          // On any change, reload. For bigger apps you would patch locally by payload.eventType
+          loadTeams();
+        })
+        .subscribe();
+    }
+
+    // ===== Events =====
+    $('#addQualityBtn').addEventListener('click', ()=>{ addQualityRow(); renderAddRecordForm(); });
+    $('#saveQualitiesBtn').addEventListener('click', saveQualitiesToLocal);
+    $('#saveTeamBtn').addEventListener('click', saveTeam);
+    $('#cancelEditBtn').addEventListener('click', cancelEdit);
+    $('#connectBtn').addEventListener('click', connectSupabase);
+    $('#disconnectBtn').addEventListener('click', ()=>{ disconnectSupabase(); setStatus('🔌 Not connected'); });
+
+    // ===== Init =====
+    (function init(){
+      // Load stored settings
+      const storedUrl = localStorage.getItem('sbUrl')||''; const storedKey = localStorage.getItem('sbKey')||'';
+      $('#sbUrl').value = storedUrl; $('#sbKey').value = storedKey;
+      // Load qualities
+      const savedQs = localStorage.getItem('qualities');
+      setQualities(savedQs? JSON.parse(savedQs) : null);
+      renderAddRecordForm();
+      // Auto-connect if creds exist
+      if(storedUrl && storedKey){ connectSupabase(); }
+    })();
+	$('#toggleQualitiesBtn').addEventListener('click', ()=>{
+  const section = $('#qualitiesSection');
+  const btn = $('#toggleQualitiesBtn');
+  if(section.style.display === 'none'){
+    section.style.display = '';
+    btn.textContent = 'Hide Qualities';
+  } else {
+    section.style.display = 'none';
+    btn.textContent = 'Show Qualities';
+  }
+});
+  </script>
+</body>
+</html>
